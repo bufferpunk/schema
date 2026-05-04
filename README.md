@@ -18,30 +18,53 @@ npm install @bufferpunk/schema
 
 ## Package Structure
 
-- `base.js` contains the reusable validation base class.
-- `user.js` shows a sample model built on top of the base class.
-- `example.js` demonstrates creating and logging a validated object.
+- `base.ts` / `base.d.ts` / `base.js` — The reusable validation base class with full TypeScript types.
+- `example.ts` / `example.js` — A complete example with a User model and usage demo.
+
+The package includes TypeScript source files with type declarations generated during the build. Run `npm run build` to regenerate `.d.ts` files after updating `.ts` sources.
 
 ## Usage
+
+### JavaScript
 
 Create a model by extending `Base` and defining a static `schema`:
 
 ```js
 import Base from "@bufferpunk/schema";
 
-export default class User extends Base {
+class User extends Base {
   static version = 1;
   static schema = {
     name: { type: String, maxLength: 80, minLength: 5, optional: true },
     confirmed: { type: Boolean, optional: true, default: false }
   };
 }
+
+const user = new User(
+  {
+    name: "John Doe",
+    confirmed: false
+  },
+  true // optional: adds version tag to output for database migrations (defaults to false)
+);
+
+console.log(user);
 ```
 
-Instantiate the class with raw input data:
+### TypeScript
 
-```js
-import User from "./user.js";
+Use TypeScript for full type safety:
+
+```ts
+import Base, { SchemaDefinition } from "@bufferpunk/schema";
+
+class User extends Base {
+  static version = 1;
+  static schema: SchemaDefinition = {
+    name: { type: String, maxLength: 80, minLength: 5, optional: true },
+    confirmed: { type: Boolean, optional: true, default: false }
+  };
+}
 
 const user = new User(
   {
@@ -54,6 +77,16 @@ const user = new User(
 console.log(user);
 ```
 
+### Building TypeScript
+
+If you modify the `.ts` source files, rebuild the type declarations:
+
+```bash
+npm run build
+```
+
+This generates `.d.ts` files for IDE autocompletion and type checking.
+
 ## Schema Rules
 
 Each field configuration can include the following options:
@@ -63,20 +96,21 @@ Each field configuration can include the following options:
 - `default`: value used when the input is missing. Functions are executed to produce the default.
 - `minLength` and `maxLength`: length checks for values that expose `length`.
 - `validate(value)`: custom validation that runs after coercion and nested validation.
+- `child`: for `Array` types, defines the schema for nested validation.
+- `children`: for `Object` types, defines the schema for nested validation of object properties.
 
-### Nested Objects
+## Examples
 
-Use `children` on an `Object` schema to validate nested properties:
+The included `example.ts` / `example.js` demonstrates:
 
-```js
-channel: {
-  type: Object,
-  children: {
-    name: { type: String, maxLength: 5 },
-    email: { type: String, optional: true }
-  }
-}
-```
+- nested object validation for contact channels (email, phone)
+- recursive validation for arrays of car objects
+- default values for fields such as `language`, `bio`, and `confirmed`
+- version tagging via the `addVersion` constructor argument
+- both JavaScript and TypeScript patterns
+
+See the example files for a complete demonstration of the package's capabilities.
+
 
 ### Arrays
 
@@ -94,15 +128,6 @@ cars: {
   }
 }
 ```
-
-## Example Model
-
-The included `user.js` example demonstrates:
-
-- nested object validation for contact channels
-- recursive validation for arrays of car objects
-- default values for fields such as `language`, `bio`, and `confirmed`
-- version tagging via the `addVersion` constructor argument
 
 ## Notes
 

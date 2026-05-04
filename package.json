@@ -1,9 +1,10 @@
 {
   "name": "@bufferpunk/schema",
-  "version": "1.0.1",
+  "version": "2.0.0",
   "description": "A runtime schema and type validator for JavaScript and TypeScript.",
   "type": "module",
   "main": "base.js",
+  "types": "base.d.ts",
   "scripts": {
     "build": "tsc",
     "test": "jest"
@@ -20,5 +21,8 @@
     "runtime"
   ],
   "author": "Bufferpunk",
-  "license": "MIT"
+  "license": "MIT",
+  "devDependencies": {
+    "typescript": "^5.0.0"
+  }
 }
