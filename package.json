@@ -1,6 +1,6 @@
 {
   "name": "@bufferpunk/schema",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "A runtime schema and type validator for JavaScript and TypeScript.",
   "type": "module",
   "main": "base.js",
