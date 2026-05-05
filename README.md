@@ -106,11 +106,13 @@ Each field in a schema can include:
 - `default`: fallback value when input is `null` or `undefined` (function values are executed)
 - `enum`: list of allowed values
 - `minLength`, `maxLength`: length constraints for values with a `length`
-- `beforeValidate(value)`: transforms/sanitizes raw input before required/type checks
-- `afterValidate(value)`: transforms value after type/length/enum checks
-- `validate(value)`: custom final validation logic
+- `beforeValidate(value)`: your hooks to run before any type checks or validations, for normalization or coercion. Should return the new value.
+- `afterValidate(value)`: your hooks to run after type checks and validations, but before the final custom `validate`
+- `validate(value)`: your custom validation function that runs after all other checks, for complex business rules. Should throw an error if validation fails.
 - `child`: required for `Array` types to validate each array item
 - `children`: required for `Object` types to validate nested properties
+
+the `type` property is the only required configuration for a field. All other properties are optional and can be used as needed to enforce constraints and transformations.
 
 ## Validation Order
 
