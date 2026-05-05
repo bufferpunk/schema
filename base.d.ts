@@ -2,9 +2,12 @@ export interface FieldConfig {
     type: any;
     optional?: boolean;
     default?: any;
+    enum?: any[];
     maxLength?: number;
     minLength?: number;
+    beforeValidate?: (value: any) => any;
     validate?: (value: any) => void;
+    afterValidate?: (value: any) => any;
     children?: Record<string, FieldConfig>;
     child?: FieldConfig;
 }

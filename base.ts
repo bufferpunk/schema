@@ -2,9 +2,12 @@ export interface FieldConfig {
   type: any;
   optional?: boolean;
   default?: any;
-  maxLength?: number;
+  enum?: any[];
+  maxLength?: number; 
   minLength?: number;
+  beforeValidate?: (value: any) => any;
   validate?: (value: any) => void;
+  afterValidate?: (value: any) => any;
   children?: Record<string, FieldConfig>;
   child?: FieldConfig;
 }
@@ -35,7 +38,7 @@ export default class Base {
       const conf = schema[key];
       let value = data[key];
 
-      if (!conf) throw new Error(`${key} has no schema. Either remove it from the input or add a schema for it.`);
+      if (!conf) throw new Error(`'${key}' has no schema. Either remove it from the schema definition or add a schema for it.`);
       this[key] = this.runValidate(conf, value, key);
     }
   }
@@ -45,14 +48,14 @@ export default class Base {
     let toReturn: any = value;
 
     if (conf.type === Array) {
-      if (!conf.child) throw new Error(`Missing child configuration for array at ${path}[i]`);
-      toReturn = value.map((v: any, i: number) => this.runValidate(conf.child!, v, `${path}[${i}]`));
+      if (!conf.child) throw new Error(`Missing child configuration for array at '${path}'`);
+      toReturn = value.map((v: any, i: number) => this.runValidate(conf.child!, v, `'${path}[${i}]'`));
     }
 
     if (conf.type === Object && conf.children) {
       const obj: Record<string, any> = {};
       for (const childKey in conf.children)
-        obj[childKey] = this.runValidate(conf.children[childKey], value[childKey], `${path}.${childKey}`);
+        obj[childKey] = this.runValidate(conf.children[childKey], value[childKey], `'${path}.${childKey}'`);
 
       toReturn = obj;
     }
@@ -64,6 +67,11 @@ export default class Base {
   private validateType(conf: FieldConfig, value: any, path: string): { conf: FieldConfig; value: any } {
     if (!conf.type) throw new Error(`Missing type configuration at ${path}`);
 
+    if (conf.beforeValidate && typeof conf.beforeValidate === "function") {
+      const newVal = conf.beforeValidate(value);
+      if (newVal !== undefined && newVal !== null) value = newVal;
+    }
+
     if (value === null || value === undefined) {
       if (conf.default !== undefined) value = typeof conf.default === 'function' ? conf.default() : conf.default;
       if (!conf.optional && (value === null || value === undefined)) throw new Error(`Missing required property at ${path}`);
@@ -71,14 +79,23 @@ export default class Base {
     }
 
     if (value.constructor !== conf.type) {
+      // Attempt to coerce the value to the correct type if possible
+      // Valuable for date strings from a json for example, but also for numbers and booleans
       value = new conf.type(value);
       if (value.constructor !== conf.type || isNaN(value))
         throw new Error(`Invalid type at ${path}, expected ${conf.type.name}, got ${value.constructor.name}`);
     }
 
-    if (conf.maxLength && value.length > conf.maxLength) throw new Error(`Value too large for ${path}, maximum characters: ${conf.maxLength}`);
-    if (conf.minLength && value.length < conf.minLength) throw new Error(`Value too small for ${path}, minimum characters: ${conf.minLength}`);
+    if (conf.maxLength && value.length > conf.maxLength) throw new Error(`Value too large for '${path}', maximum characters: ${conf.maxLength}`);
 
+    if (conf.minLength && value.length < conf.minLength) throw new Error(`Value too small for '${path}', minimum characters: ${conf.minLength}`);
+
+    if (conf.enum && !conf.enum.includes(value)) throw new Error(`Invalid value for ${path}, expected one of: ${conf.enum.join(", ")}`);
+
+    if (conf.afterValidate && typeof conf.afterValidate === "function") {
+      const newVal = conf.afterValidate(value);
+      if (newVal !== undefined && newVal !== null) value = newVal;
+    }
     return { conf, value };
   }
 }

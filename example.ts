@@ -5,25 +5,40 @@ import Base, { SchemaDefinition } from "./base";
 
 class User extends Base {
   static collection = 'users'; // in this example, this is for mongodb, but it can be used for any db or even just for in-memory objects. It's just a way to identify the type of the object and can be used for later migrations if needed.
-  static version = 1;
+  static version = 1; // optional, but useful for future migrations and schema changes. You can even have multiple versions of the same model coexisting in the codebase and handle them differently based on the version property.
   static schema: SchemaDefinition = {
     joinedOn: { type: Date, default: new Date(), optional: true },
-    name: { type: String, maxLength: 80, minLength: 5, optional: true },
+    name: {
+      type: String,
+      maxLength: 80,
+      minLength: 5,
+      optional: true,
+      beforeValidate: (value: any) => typeof value === 'string' ? value.trim() : value,
+      afterValidate: (value: any) => value.replace(/\s+/g, ' ')
+    },
     channel: {
       type: Object,
       children: { // An object can have multiple children types
-        name: { type: String, maxLength: 5 },
+        name: { type: String, maxLength: 5, enum: ['phone', 'email'] },
         email: { type: String, maxLength: 35, minLength: 5, optional: true },
         phone: { type: String, maxLength: 15, minLength: 5, optional: true }
       },
       validate: (value: Record<string, any>) => {
         // Validates the final value after all type checks and defaults have been applied
         if (value.name === 'email' && !/^[a-z0-9._+-]+@[a-z0-9-]+(\.[a-z]{2,})+$/.test(value.email)) throw new Error('Invalid email format');
-        if (!['phone', 'email'].includes(value.name)) throw new Error('Invalid channel name');
         if (!value[value.name]) throw new Error(`Missing channel value for ${value.name}`);
       }
     },
-    language: { type: String, maxLength: 20, minLength: 5, optional: true, default: 'English' },
+    language: {
+      type: String,
+      maxLength: 20,
+      minLength: 5,
+      optional: true,
+      default: 'english',
+      enum: ['english', 'spanish', 'portuguese'],
+      beforeValidate: (value: any) => typeof value === 'string' ? value.toLowerCase().trim() : value,
+      afterValidate: (value: any) => value.charAt(0).toUpperCase() + value.slice(1)
+    },
     bio: { type: String, maxLength: 50, minLength: 5, optional: true,
       default: () => {
         // Yes, default can be a function or a primitive type value.
@@ -43,7 +58,14 @@ class User extends Base {
           model: { type: String, maxLength: 20, minLength: 2 },
           year: { type: Number, optional: true },
           plate_number: { type: String, maxLength: 20, minLength: 3 },
-          color: { type: String, maxLength: 10, minLength: 3 },
+          color: {
+            type: String,
+            maxLength: 10,
+            minLength: 3,
+            enum: ['blue', 'red', 'black', 'white', 'silver'],
+            beforeValidate: (value: any) => typeof value === 'string' ? value.toLowerCase().trim() : value,
+            afterValidate: (value: any) => value.charAt(0).toUpperCase() + value.slice(1)
+          },
           img_url: { type: String, maxLength: 200, minLength: 5, optional: true }
         }
       }
@@ -52,7 +74,7 @@ class User extends Base {
 }
 
 const user = new User({
-  name: 'John Doe',
+  name: '   John    Doe   ',
   channel: { name: 'email', email: 'john@example.com' },
   cars: [
     { make: 'Toyota', model: 'Camry', year: 2020, plate_number: 'ABC123', color: 'Blue' },

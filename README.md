@@ -1,14 +1,23 @@
 # @bufferpunk/schema
 
-A small runtime schema and type validator for JavaScript and TypeScript-style object models.
+A lightweight, super fast runtime schema validator for JavaScript and TypeScript models.
 
-It is designed for classes that extend a shared base validator and define a static `schema` object. When you create a model instance, the base class:
+`@bufferpunk/schema` is built around a base class that validates plain objects using a static schema definition. It is especially useful when working with NoSQL data, API payloads, and nested objects that need runtime guarantees.
 
-- validates required and optional fields
-- applies default values
-- coerces primitive values when possible
-- validates nested objects and arrays recursively
-- runs custom validation functions after type checks
+This is built for data integrity and validation without the overhead of a full ORM or heavy validation library. It provides a simple way to  define schemas with type coercion, defaults, required fields, and custom validation logic.  
+Best for APIs that receive untyped data and need to enforce structure and constraints at runtime.
+
+## What It Does
+
+When a model extends `Base` and defines a static `schema`, instance creation will:
+
+- enforce required fields
+- apply defaults (primitive values or factory functions)
+- coerce values to the configured type when possible
+- validate nested objects and arrays recursively
+- validate allowed values with `enum`
+- run `beforeValidate` and `afterValidate` hooks
+- run custom `validate` logic for business rules
 
 ## Installation
 
@@ -16,119 +25,142 @@ It is designed for classes that extend a shared base validator and define a stat
 npm install @bufferpunk/schema
 ```
 
-## Package Structure
-
-- `base.ts` / `base.d.ts` / `base.js` — The reusable validation base class with full TypeScript types.
-- `example.ts` / `example.js` — A complete example with a User model and usage demo.
-
-The package includes TypeScript source files with type declarations generated during the build. Run `npm run build` to regenerate `.d.ts` files after updating `.ts` sources.
-
-## Usage
-
-### JavaScript
-
-Create a model by extending `Base` and defining a static `schema`:
+## Quick Start (JavaScript)
 
 ```js
 import Base from "@bufferpunk/schema";
 
 class User extends Base {
   static version = 1;
+
   static schema = {
-    name: { type: String, maxLength: 80, minLength: 5, optional: true },
+    name: {
+      type: String,
+      minLength: 2,
+      maxLength: 80,
+      beforeValidate: (value) => typeof value === "string" ? value.trim() : value,
+      afterValidate: (value) => value.replace(/\s+/g, " ")
+    },
+    role: {
+      type: String,
+      enum: ["admin", "editor", "viewer"],
+      default: "viewer",
+      beforeValidate: (value) => typeof value === "string" ? value.toLowerCase() : value
+    },
     confirmed: { type: Boolean, optional: true, default: false }
   };
 }
 
-const user = new User(
-  {
-    name: "John Doe",
-    confirmed: false
-  },
-  true // optional: adds version tag to output for database migrations (defaults to false)
-);
+const user = new User({
+  name: "   John    Doe   ",
+  role: "EDITOR"
+}, true); // remove the second argument to skip version addition
 
 console.log(user);
+// {
+//   name: "John Doe",
+//   role: "editor",
+//   confirmed: false,
+//   version: 1
+// }
 ```
 
-### TypeScript
-
-Use TypeScript for full type safety:
+## Quick Start (TypeScript)
 
 ```ts
 import Base, { SchemaDefinition } from "@bufferpunk/schema";
 
 class User extends Base {
   static version = 1;
+
   static schema: SchemaDefinition = {
-    name: { type: String, maxLength: 80, minLength: 5, optional: true },
-    confirmed: { type: Boolean, optional: true, default: false }
+    name: {
+      type: String,
+      minLength: 2,
+      maxLength: 80,
+      beforeValidate: (value: any) => typeof value === "string" ? value.trim() : value,
+      afterValidate: (value: any) => value.replace(/\s+/g, " ")
+    },
+    language: {
+      type: String,
+      enum: ["english", "spanish", "portuguese"],
+      default: "english",
+      beforeValidate: (value: any) => typeof value === "string" ? value.toLowerCase().trim() : value,
+      afterValidate: (value: any) => value.charAt(0).toUpperCase() + value.slice(1)
+    }
   };
 }
 
-const user = new User(
-  {
-    name: "John Doe",
-    confirmed: false
-  },
-  true // optional to add version tag to the output object, if you're using a db for later migration. (defaults to false)
-);
-
+const user = new User({ name: "   Ana   Silva   " });
 console.log(user);
 ```
 
-### Building TypeScript
+Now you have safe user input, and can safely work with the objects knowing they conform to the defined schema, with all the transformations and validations applied.
 
-If you modify the `.ts` source files, rebuild the type declarations:
+## Field Configuration
 
-```bash
-npm run build
-```
+Each field in a schema can include:
 
-This generates `.d.ts` files for IDE autocompletion and type checking.
+- `type` (required): constructor such as `String`, `Number`, `Boolean`, `Date`, `Array`, `Object`
+- `optional`: allows missing value
+- `default`: fallback value when input is `null` or `undefined` (function values are executed)
+- `enum`: list of allowed values
+- `minLength`, `maxLength`: length constraints for values with a `length`
+- `beforeValidate(value)`: transforms/sanitizes raw input before required/type checks
+- `afterValidate(value)`: transforms value after type/length/enum checks
+- `validate(value)`: custom final validation logic
+- `child`: required for `Array` types to validate each array item
+- `children`: required for `Object` types to validate nested properties
 
-## Schema Rules
+## Validation Order
 
-Each field configuration can include the following options:
+For each field, validation runs in this order:
 
-- `type`: required. The expected constructor, such as `String`, `Number`, `Boolean`, `Date`, `Array`, or `Object`.
-- `optional`: allows the field to be omitted.
-- `default`: value used when the input is missing. Functions are executed to produce the default.
-- `minLength` and `maxLength`: length checks for values that expose `length`.
-- `validate(value)`: custom validation that runs after coercion and nested validation.
-- `child`: for `Array` types, defines the schema for nested validation.
-- `children`: for `Object` types, defines the schema for nested validation of object properties.
+1. `beforeValidate`
+2. required/optional and default handling
+3. type validation/coercion
+4. `minLength` / `maxLength`
+5. `enum`
+6. `afterValidate`
+7. custom `validate`
 
-## Examples
+This order allows you to normalize input first, then enforce constraints, then apply final formatting.
 
-The included `example.ts` / `example.js` demonstrates:
+## Nested Objects and Arrays
 
-- nested object validation for contact channels (email, phone)
-- recursive validation for arrays of car objects
-- default values for fields such as `language`, `bio`, and `confirmed`
-- version tagging via the `addVersion` constructor argument
-- both JavaScript and TypeScript patterns
-
-See the example files for a complete demonstration of the package's capabilities.
-
-
-### Arrays
-
-Use `child` on an `Array` schema to validate every element:
+Use `children` for objects and `child` for arrays:
 
 ```js
+preferences: {
+  type: Object,
+  children: {
+    theme: { type: String, enum: ["light", "dark"], default: "light" },
+    notifications: { type: Boolean, default: true }
+  }
+},
 cars: {
   type: Array,
   child: {
     type: Object,
     children: {
       make: { type: String },
-      model: { type: String }
+      model: { type: String },
+      color: {
+        type: String,
+        enum: ["blue", "red", "black"],
+        beforeValidate: (v) => typeof v === "string" ? v.toLowerCase().trim() : v,
+        afterValidate: (v) => v.charAt(0).toUpperCase() + v.slice(1)
+      }
     }
   }
 }
 ```
 
+## Included Files
+
+- `base.ts` / `base.js` / `base.d.ts`: base validator implementation
+- `example.ts` / `example.js`: complete usage examples with nested schemas and hooks
+
 ## Notes
 
-This package is most useful when you want schema validation at runtime without introducing a full database ORM or a larger validation framework.
+This package is intentionally small and framework-agnostic. It gives you runtime schema safety without requiring a full ORM or heavyweight validation framework.
