@@ -106,7 +106,7 @@ Each field in a schema can include:
 - `optional`: allows missing value
 - `default`: fallback value when input is `null` or `undefined` (function values are executed)
 - `enum`: list of allowed values
-- `minLength`, `maxLength`: length constraints for values with a `length` property
+- `max`, `min`: numeric or length constraints (for strings, checks `value.length`)
 - `immutable`: prevent this field from being changed after creation
 - `beforeChecks(value)`: transforms/sanitizes raw input before required/type checks
 - `afterChecks(value)`: transforms value after type/length/enum checks and before validation
@@ -176,11 +176,40 @@ user.update({ role: "admin" });
 // All validation, defaults, and hooks run again
 ```
 
+You can also directly assign to properties, which will validate and apply hooks:
+
+```ts
+const user = new User({ name: "  John  " });
+user.name = "  Jane  "; // Applies beforeChecks/afterChecks hooks
+console.log(user.name); // "Jane" (trimmed and formatted)
+```
+
+Both `constructor()` and `update()` accept an optional `parseConfig` parameter:
+
+```ts
+// Coerce string dates to Date objects
+const user = new User({ createdAt: "2020-01-01" }, { coerce: true });
+
+// Silently ignore validation errors (returns empty object)
+const user = new User({ invalid: 123 }, { safe: true });
+
+// Same for updates
+user.update({ role: "newRole" }, { safe: false, coerce: true });
+```
+
+You don't have to pass in the `parseConfig` into `update()` if you already passed it in the constructor. The config will persist on the instance and apply to all future updates.
+
+```ts
+const user = new User({ name: "John" }, { coerce: true, safe: true });
+user.update({ role: "newRole" }); // Uses the same parseConfig
+```
+
+## Versioning
 The constructor automatically includes the `version` if defined on the class:
 
 ```ts
 class User extends Base {
-  static version = 1;
+  static version = 1; // optional version property
   static schema = { /* ... */ };
 }
 
@@ -276,6 +305,20 @@ If you want to copy the pattern into your own app, treat `examples/user.ts` as t
 ## Migration from v2.x
 
 If upgrading from v2.x, see [CHANGELOG.md](CHANGELOG.md) for breaking changes and migration steps.
+
+## Serialization
+
+Convert an instance to a plain object or JSON string:
+
+```ts
+const user = new User({ name: "John" });
+
+// Plain object (all properties enumerable)
+const obj = user.toObject();
+
+// JSON string
+const json = user.json();
+```
 
 ## Notes
 

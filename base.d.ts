@@ -4,8 +4,8 @@ export interface FieldConfig {
     optional?: boolean;
     default?: any;
     enum?: any[];
-    maxLength?: number;
-    minLength?: number;
+    max?: number;
+    min?: number;
     beforeChecks?: (value: any) => any;
     afterChecks?: (value: any) => any;
     validate?: (value: any) => void;
@@ -15,15 +15,19 @@ export interface FieldConfig {
 export interface SchemaDefinition {
     [key: string]: FieldConfig;
 }
+export interface parserConfig {
+    coerce?: boolean;
+    safe?: boolean;
+}
 export default class Base {
-    #private;
     [key: string]: any;
     static schema: SchemaDefinition;
     static version?: number;
     static immutable?: boolean;
-    constructor(obj: Record<string, any>);
+    static parseConfig?: parserConfig;
+    constructor(obj: Record<string, any>, parseConfig?: parserConfig);
+    update(obj: Record<string, any>, parseConfig?: parserConfig, isNew?: boolean): void;
     toObject(): Record<string, any>;
-    update(obj: Record<string, any>): void;
     private setProperties;
     private runValidate;
     private validateType;

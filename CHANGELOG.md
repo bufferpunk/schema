@@ -1,5 +1,57 @@
 # Changelog
 
+## [3.1.0] - 2026-05-12
+
+### ⚠️ Breaking Changes
+
+- **Immutability error messages**: Error message wording changed for consistency
+  ```
+  // Before: "Cannot change immutable property 'name'"
+  // After: "Cannot update immutable property 'name'"
+  ```
+
+- **Property setter enforcement**: Class-level immutability now prevents direct property assignment (not just `.update()`)
+  ```ts
+  class ImmutableUser extends Base {
+    static immutable = true;
+    static schema = { name: { type: String } };
+  }
+  
+  const user = new ImmutableUser({ name: "John" });
+  user.name = "Jane"; // Error: Cannot update immutable object of type ImmutableUser
+  ```
+
+### ✨ New Features
+
+- **`json()` method**: Serialize instance to JSON string
+  ```ts
+  const user = new User({ name: "John" });
+  const jsonStr = user.json();
+  ```
+
+- **`parseConfig` parameter**: Pass `coerce` and `safe` options to constructor and `.update()`
+  ```ts
+  // Coerce string to Date on construction
+  const user = new User({ createdAt: "2020-01-01" }, { coerce: true });
+  
+  // Silently ignore validation errors during construction
+  const user = new User({}, { safe: true });
+  ```
+
+- **Property setter validation**: Direct property assignment now validates and revalidates values
+  ```ts
+  const user = new User({ name: "John" });
+  user.name = "  Jane  "; // Runs beforeChecks/afterChecks hooks
+  ```
+
+- **Fixed nested object property leak**: Nested `keys` properties now correctly attach to their parent object, not the root instance
+
+### 🐛 Bug Fixes
+
+- Property setters now persist validated values instead of discarding them
+- Nested object child properties no longer leak to the root object during initialization
+- Immutability is now enforced on direct property assignment (not just `.update()`)
+
 ## [3.0.0] - 2026-05-06
 
 ### ⚠️ Breaking Changes
